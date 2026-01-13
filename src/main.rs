@@ -36,7 +36,7 @@ struct Args {
     print: bool,
 
     /// Serial port file descriptor
-    #[arg(short, long, default_value = "dev/ttyUSB0")]
+    #[arg(short, long, default_value = "/dev/ttyUSB0")]
     port: String,
 
     /// Serial port baud rate
@@ -44,11 +44,11 @@ struct Args {
     baud: u32,
 }
 
-fn main() {
-    let args = Args::parse();
+fn get_data() -> Vec<u8> {
+    vec![0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x7, 0xAB, 0xCD, 0xEF]
+}
 
-    let data = vec![0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x7, 0xAB, 0xCD, 0xEF];
-
+fn send(data: Vec<u8>, serial: &mut SerialConnection, args: &Args) {
     let src_addr = [192, 168, 1, 20];
     let src_port = 5000;
 
@@ -73,6 +73,13 @@ fn main() {
         println!("Packet: {}", hex_string(&packet));
     }
 
+    serial
+        .write(&packet)
+        .expect("Error when writing to serial port");
+}
+
+fn main() {
+    let args = Args::parse();
     let mut serial = match SerialConnection::connect(&args.port, args.baud) {
         Ok(connection) => connection,
         Err(e) => {
@@ -80,9 +87,13 @@ fn main() {
             std::process::exit(1);
         }
     };
-    serial
-        .write(&packet)
-        .expect("Error when writing to serial port");
+
+    let data = get_data();
+    send(data, &mut serial, &args);
+    match serial.read() {
+        Some(data) => println!("Received: [{}]", hex_string(&data)),
+        None => println!("[!] No data"),
+    }
 }
 
 fn hex_string(bytes: &[u8]) -> String {

@@ -36,4 +36,22 @@ impl SerialConnection {
 
         Ok(data.len())
     }
+
+    pub fn read(&mut self) -> Option<Vec<u8>> {
+        let mut data = Vec::new();
+        let mut buffer: Vec<u8> = vec![0; 1000];
+
+        loop {
+            match self.connection.read(buffer.as_mut_slice()) {
+                Ok(0) => break,
+                Ok(t) => data.extend_from_slice(&buffer[..t]),
+                Err(_) => break,
+            }
+        }
+
+        match data.len() {
+            0 => None,
+            _ => Some(data),
+        }
+    }
 }
